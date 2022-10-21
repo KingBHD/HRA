@@ -21,6 +21,7 @@ INSERT INTO hrone (username, password, webhookUrl) VALUES ('username', 'password
 ```
 
 - `npm install` - Install dependencies
+- `npx prisma db push` - Push the database schema
 - `npm start` - Start the script and the crons
 
 ## Important Notes
