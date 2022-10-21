@@ -1,8 +1,5 @@
 import phin from "phin";
 
-export const DEBUG_WEBHOOK_DEV = `https://discord.com/api/webhooks/834479602725552159/37H2HiZtv8Z5LXL8C_jahFZIKS2KP7k2D8s0vFHiqVDuiENRHcSSn7nFV9S_uWspAyGS`;
-export const DEBUG_WEBHOOK_PROD = `https://discord.com/api/webhooks/997936473653379184/dx9isNm1CYMaWAtGeyYFHffxroBIdpahzzhU5H6-vjZ_16CCrX1wdhJCOPCj_TIyxBgy`;
-
 
 export function hexToDecimal(hex) {
     return parseInt(hex.replace("#", ""), 16)

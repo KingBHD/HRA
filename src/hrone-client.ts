@@ -2,7 +2,7 @@ import {hrone, PrismaClient} from "@prisma/client";
 import phin from "phin";
 import Log from "./utils/logger";
 import moment from "moment-timezone";
-import {CustomDate, DEBUG_WEBHOOK_DEV, sendWebhookAlert} from "./utils/helpers";
+import {CustomDate, sendWebhookAlert} from "./utils/helpers";
 
 const prisma = new PrismaClient();
 
@@ -214,7 +214,7 @@ export class HROneUser {
         if (this.webhookUrl) {
             let checkin = now.date.getHours() >= 8 && now.date.getHours() < 17 ? 'in' : 'out';
             await sendWebhookAlert(
-                DEBUG_WEBHOOK_DEV,
+                process.env.ALERT_WEBHOOK,
                 `[RANDOM] Attendance Check${checkin}`,
                 `**${this.empId || this.username}** has checked ${checkin} at ${now.punchDateString}.`,
                 checkin === 'in' ? '#00ff00' : '#ff9200'
@@ -226,7 +226,7 @@ export class HROneUser {
     async sendFailedAlerts(now: CustomDate, message?: string) {
         if (this.webhookUrl) {
             await sendWebhookAlert(
-                DEBUG_WEBHOOK_DEV,
+                process.env.ALERT_WEBHOOK,
                 `Punching failed`,
                 `Punching failed for ${this.username} at ${now.punchDateString} Kindly punch manually.` + (message ? `\n\n${message}` : ''),
                 '#ff0000'
