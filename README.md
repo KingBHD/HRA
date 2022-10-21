@@ -4,7 +4,6 @@ An automated system to mark attendance for HROne Inbox V5 https://app.hrone.clou
 
 ## Environment Variables
 
-- `DATABASE_PROVIDER` - The database provider to use. Currently only `sqlite` is supported.
 - `DATABASE_URL` - The database file path. E.g: `file:./main.db`
 - `IP_ADDRESS` - IP address of the VPS or server. _This is required during pushing_
 - `COMPANY_DOMAIN` - Your HROne Inbox V5 company domain
