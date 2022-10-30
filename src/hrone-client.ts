@@ -98,11 +98,11 @@ export class HROneUser {
     }
 
     async gotValidToken() {
-        if (!this.accessToken) {
+        // if (!this.accessToken) {
             this.accessToken = await this.getNewToken();
             return this.accessToken !== null;
-        }
-        return true;
+        // }
+        // return true;
     }
 
     async getEmpId() {
@@ -213,9 +213,15 @@ export class HROneUser {
 
         if (this.webhookUrl) {
             let checkin = now.date.getHours() >= 8 && now.date.getHours() < 17 ? 'in' : 'out';
+            // await sendWebhookAlert(
+            //     this.webhookUrl,
+            //     `[RANDOM] Attendance Check${checkin}`,
+            //     `**${this.empId || this.username}** has checked ${checkin} at ${now.punchDateString}.`,
+            //     checkin === 'in' ? '#00ff00' : '#ff9200'
+            // );
             await sendWebhookAlert(
-                process.env.ALERT_WEBHOOK,
-                `[RANDOM] Attendance Check${checkin}`,
+                this.webhookUrl,
+                `Lodu test hai ye manually lgalo`,
                 `**${this.empId || this.username}** has checked ${checkin} at ${now.punchDateString}.`,
                 checkin === 'in' ? '#00ff00' : '#ff9200'
             );
@@ -226,7 +232,7 @@ export class HROneUser {
     async sendFailedAlerts(now: CustomDate, message?: string) {
         if (this.webhookUrl) {
             await sendWebhookAlert(
-                process.env.ALERT_WEBHOOK,
+                this.webhookUrl,
                 `Punching failed`,
                 `Punching failed for ${this.username} at ${now.punchDateString} Kindly punch manually.` + (message ? `\n\n${message}` : ''),
                 '#ff0000'
