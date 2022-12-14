@@ -77,7 +77,7 @@ export class HROneUser {
                 username: this.username,
                 password: this.password,
                 loginType: `1`,
-                companyDomainCode: process.env.COMPANY_DOMAIN,
+                companyDomainCode: process.env.COMPANY_DOMAIN
             }
         });
         if (response.statusCode !== 200) {
@@ -93,11 +93,11 @@ export class HROneUser {
     }
 
     async hasValidToken() {
-        // if (!this.accessToken) {
-        this.accessToken = await this.getNewToken();
-        return this.accessToken !== null;
-        // }
-        // return true;
+        if (!this.accessToken || this.isTokenExpired()) {
+            this.accessToken = await this.getNewToken();
+            return this.accessToken !== null;
+        }
+        return true;
     }
 
     async getEmpId() {
@@ -152,7 +152,7 @@ export class HROneUser {
             method: 'GET',
             parse: 'json',
             headers: {Authorization: `Bearer ${this.accessToken}`}
-        })
+        });
         if (response.statusCode === 204) {
             this.timeIn = false;
             this.timeOut = false;
@@ -167,18 +167,16 @@ export class HROneUser {
     }
 
     hasAlreadyMarked(currentHour) {
-        // Proceed only if user has not punched in, and it's 8:00 AM
         if (!this.timeIn && currentHour == 8) {
-            return true;
+            Log.info(`Needs to punch in`.gray, 'HROUser');
+            return false;
+        } else if (this.timeIn && !this.timeOut && currentHour == 17) {
+            Log.info(`Needs to punch out`.gray, 'HROUser');
+            return false;
         }
 
-        // Proceed only if user hasn't checked out yet, and it's 5:00 PM
-        if (!this.timeOut && currentHour == 17) {
-            return true;
-        }
-
-        // Proceed only when if user has checked in today, and it's 5:00 PM
-        return (this.timeIn && currentHour == 17);
+        Log.info(`No need to punch in/out`.gray, 'HROUser');
+        return true;
     }
 
     async punch(now: CustomDate) {
@@ -228,7 +226,7 @@ export class HROneUser {
     }
 
     async pushSkipAlert(message: string, title?: string, color?: string) {
-        let url = this.webhookUrl || process.env.ALERT_WEBHOOK
+        let url = this.webhookUrl || process.env.ALERT_WEBHOOK;
         if (url) {
             await sendWebhookAlert(
                 url,

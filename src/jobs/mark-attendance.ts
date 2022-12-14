@@ -27,19 +27,17 @@ export const job = new CronJob({
             }
 
             // Check if access token is valid and not expired, if not, refresh it
-            if (employee.isTokenExpired()) {
-                if (!await employee.hasValidToken()) {
-                    Log.error(`Failed to get valid token for ${employee.username}`.red, `HROne`);
-                    await employee.pushFailedAlert(`Failed to get valid token for ${employee.username}`);
-                    continue;
-                }
+            if (!await employee.hasValidToken()) {
+                Log.error(`Failed to get valid token for ${employee.username}`.red, `HROne`);
+                await employee.pushFailedAlert(`Failed to get valid token`);
+                continue;
             }
 
             // Check if employee id is present, if not get it
             if (!employee.empId) {
                 if (!await employee.hasValidEmpId()) {
                     Log.error(`Failed to get empId for ${employee.username}`.red, `HROne`);
-                    await employee.pushFailedAlert(`Failed to get empId for ${employee.username}`);
+                    await employee.pushFailedAlert(`Failed to get empId`);
                     continue;
                 }
             }
@@ -48,7 +46,7 @@ export const job = new CronJob({
             let today = await employee.getTodayCalendar(now);
             if (!today) {
                 Log.error(`Failed to get today's calendar for ${employee.username}`.red, `HROne`);
-                await employee.pushFailedAlert(`Failed to get today's calendar for ${employee.username}`);
+                await employee.pushFailedAlert(`Failed to get today's calendar`);
                 continue;
             }
 
@@ -63,8 +61,8 @@ export const job = new CronJob({
             await employee.getPunchDetails(now);
 
             // Check if user has already checkin or checkout
-            if (!employee.hasAlreadyMarked(now.date.getHours())) {
-                Log.info(`Continuing ${employee.username} coz of already punched by the user or it's not a right time`.yellow, `HROne`);
+            if (employee.hasAlreadyMarked(now.date.getHours())) {
+                Log.info(`Continuing ${employee.username} coz of already punched by the user`.yellow, `HROne`);
                 await employee.pushSkipAlert(`Because of already punched by the user`);
                 continue;
             }
