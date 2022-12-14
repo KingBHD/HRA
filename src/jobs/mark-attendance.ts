@@ -9,76 +9,72 @@ const prisma = new PrismaClient();
 
 
 export const job = new CronJob({
-    cronTime: '1-5 8,17 * * 1-5', onTick: async () => {
+    cronTime: '1 8,17 * * 1-5', onTick: async () => {
         Log.info("Cron Job Started", "HROne");
         let now = new CustomDate();
 
         Log.info(`Checking for HROne Checkin at ${now.punchDateString}`.green, `HROne`);
-        let users = await prisma.hrone.findMany({});
+        let users = await prisma.hrone.findMany();
 
         for (let user of users) {
-            let HROUser = HROneUser.fromPrismaUser(user);
+            let employee = HROneUser.fromPrismaUser(user);
 
-            // For adding random delay to each user
-            if (!HROUser.coinFlip()) {
-                Log.info(`Skipping ${HROUser.username} due to coin flip`.yellow, `HROne`);
-                continue;
-            }
-
-            // Check if user has set up any skips?
-            if (HROUser.hasSkipTill(now.date)) {
-                Log.info(`Skipping ${HROUser.username} due to skipTill`.yellow, `HROne`);
+            // Check if user have any applied leaves on record
+            if (employee.hasLeaves(now.date)) {
+                Log.info(`Continuing ${employee.username} coz of applied leaves`.yellow, `HROne`);
+                await employee.pushSkipAlert(`Because of applied leaves on records`);
                 continue;
             }
 
             // Check if access token is valid and not expired, if not, refresh it
-            if (HROUser.isTokenExpired()) {
-                if (!await HROUser.gotValidToken()) {
-                    Log.error(`Failed to get valid token for ${HROUser.username}`.red, `HROne`);
+            if (employee.isTokenExpired()) {
+                if (!await employee.hasValidToken()) {
+                    Log.error(`Failed to get valid token for ${employee.username}`.red, `HROne`);
+                    await employee.pushFailedAlert(`Failed to get valid token for ${employee.username}`);
                     continue;
                 }
             }
 
             // Check if employee id is present, if not get it
-            if (!HROUser.empId) {
-                if (!await HROUser.gotValidEmpId()) {
-                    Log.error(`Failed to get empId for ${HROUser.username}`.red, `HROne`);
+            if (!employee.empId) {
+                if (!await employee.hasValidEmpId()) {
+                    Log.error(`Failed to get empId for ${employee.username}`.red, `HROne`);
+                    await employee.pushFailedAlert(`Failed to get empId for ${employee.username}`);
                     continue;
                 }
             }
 
             // Get today's attendance
-            let today = await HROUser.getTodayCalendar(now);
+            let today = await employee.getTodayCalendar(now);
             if (!today) {
-                Log.error(`Failed to get today's calendar for ${HROUser.username}`.red, `HROne`);
+                Log.error(`Failed to get today's calendar for ${employee.username}`.red, `HROne`);
+                await employee.pushFailedAlert(`Failed to get today's calendar for ${employee.username}`);
                 continue;
             }
 
             // Check if it's working day or not
-            if (!HROUser.isWorkingDay(today)) {
-                Log.info(`Skipping ${HROUser.username} due to non-working day`.yellow, `HROne`);
+            if (!employee.isWorkingDay(today)) {
+                Log.info(`Continuing ${employee.username} coz of non-working day`.yellow, `HROne`);
+                await employee.pushSkipAlert(`Because of non-working day`);
                 continue;
             }
 
             // Get the punch in and punch out times if present
-            const timeDetails = await HROUser.getPunchDetails(now);
-            if (!timeDetails) {
-                Log.error(`Failed to get punch details for ${HROUser.username}`.red, `HROne`);
-                continue;
-            }
-            const {timeIn, timeOut} = timeDetails;
+            await employee.getPunchDetails(now);
 
             // Check if user has already checkin or checkout
-            if (!HROUser.shouldMarkPunch(now.date.getHours(), timeIn, timeOut)) {
-                Log.info(`Skipping ${HROUser.username} due to already punched by the user or it's not a right time`.yellow, `HROne`);
+            if (!employee.hasAlreadyMarked(now.date.getHours())) {
+                Log.info(`Continuing ${employee.username} coz of already punched by the user or it's not a right time`.yellow, `HROne`);
+                await employee.pushSkipAlert(`Because of already punched by the user`);
                 continue;
             }
 
             // Mark attendance
-            if (await HROUser.punch(now)) {
-                Log.info(`Successfully punched for ${HROUser.username}`.green, `HROne`);
+            if (await employee.punch(now)) {
+                Log.info(`Successfully punched for ${employee.username}`.green, `HROne`);
             } else {
-                Log.error(`Failed to punch for ${HROUser.username}`.red, `HROne`);
+                Log.error(`Failed to punch for ${employee.username}`.red, `HROne`);
+                await employee.pushFailedAlert(`HR-One server returned error`);
             }
         }
     }, runOnInit: false, timeZone: 'Asia/Kolkata'

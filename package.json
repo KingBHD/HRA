@@ -21,12 +21,12 @@
   },
   "homepage": "https://github.com/KingBHD/HRA#readme",
   "dependencies": {
-    "@prisma/client": "^4.5.0",
-    "prisma": "4.5.0",
+    "@prisma/client": "^4.7.1",
     "colors": "^1.4.0",
     "cron": "^2.1.0",
     "moment-timezone": "^0.5.38",
     "phin": "^3.6.1",
+    "prisma": "^4.7.1",
     "ts-node": "^10.9.1",
     "typescript": "^4.8.4"
   },

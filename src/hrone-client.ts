@@ -17,8 +17,10 @@ export class HROneUser {
     public expiredAt?: Date;
 
     public webhookUrl?: string;
-    public skipTill?: Date;
-    public punchState?: boolean = false;
+    public hasLeaveUntil?: Date;
+
+    public timeIn: boolean = false;
+    public timeOut: boolean = false;
 
 
     public constructor(
@@ -29,8 +31,7 @@ export class HROneUser {
         accessToken?: string,
         webhookUrl?: string,
         expiredAt?: Date,
-        skipTill?: Date,
-        lastPunch?: boolean
+        hasLeaveUntil?: Date
     ) {
         this.id = id;
         this.empId = empId;
@@ -39,8 +40,7 @@ export class HROneUser {
         this.accessToken = accessToken;
         this.webhookUrl = webhookUrl;
         this.expiredAt = expiredAt;
-        this.skipTill = skipTill;
-        this.punchState = lastPunch;
+        this.hasLeaveUntil = hasLeaveUntil;
     }
 
     public static fromPrismaUser(user: hrone) {
@@ -52,19 +52,14 @@ export class HROneUser {
             user.accessToken,
             user.webhookUrl,
             user.expiresAt,
-            user.skipTill,
-            user.punchedState
+            user.hasLeaveUntil
         );
     }
 
-    coinFlip() {
-        return Math.random() >= 0.5;
-    }
-
-    hasSkipTill(now?: Date) {
-        if (!this.skipTill) return false;
+    hasLeaves(now?: Date) {
+        if (!this.hasLeaveUntil) return false;
         if (!now) now = new Date();
-        return now < this.skipTill;
+        return now < this.hasLeaveUntil;
     }
 
     isTokenExpired(now?: Date) {
@@ -97,10 +92,10 @@ export class HROneUser {
         return access_token;
     }
 
-    async gotValidToken() {
+    async hasValidToken() {
         // if (!this.accessToken) {
-            this.accessToken = await this.getNewToken();
-            return this.accessToken !== null;
+        this.accessToken = await this.getNewToken();
+        return this.accessToken !== null;
         // }
         // return true;
     }
@@ -121,7 +116,7 @@ export class HROneUser {
         return empId;
     }
 
-    async gotValidEmpId() {
+    async hasValidEmpId() {
         this.empId = await this.getEmpId();
         return this.empId !== null;
     }
@@ -158,84 +153,88 @@ export class HROneUser {
             parse: 'json',
             headers: {Authorization: `Bearer ${this.accessToken}`}
         })
-        let timeIn = false;
-        let timeOut = false;
         if (response.statusCode === 204) {
-            timeIn = false;
-            timeOut = false;
+            this.timeIn = false;
+            this.timeOut = false;
         } else if (response.statusCode === 200) {
-            timeIn = !!response.body[0].punchDateTime;
+            this.timeIn = !!response.body[0].punchDateTime;
             try {
-                timeOut = !!response.body[1].punchDateTime;
+                this.timeOut = !!response.body[1].punchDateTime;
             } catch (e) {
-                timeOut = false;
+                this.timeOut = false;
             }
-        } else {
-            return null;
         }
-        return {timeIn, timeOut};
     }
 
-    shouldMarkPunch(currentHour, timeIn, timeOut) {
+    hasAlreadyMarked(currentHour) {
         // Proceed only if user has not punched in, and it's 8:00 AM
-        if (!timeIn && currentHour == 8) {
+        if (!this.timeIn && currentHour == 8) {
             return true;
         }
 
         // Proceed only if user hasn't checked out yet, and it's 5:00 PM
-        if (!timeOut && currentHour == 17) {
+        if (!this.timeOut && currentHour == 17) {
             return true;
         }
 
         // Proceed only when if user has checked in today, and it's 5:00 PM
-        return (timeIn && currentHour == 17);
+        return (this.timeIn && currentHour == 17);
     }
 
     async punch(now: CustomDate) {
         Log.info(`Punching for ${this.username}`.gray, `HROUser`);
+        const form = {
+            ipAddress: process.env.IP_ADDRESS,
+            attendanceSource: 'W',
+            attendanceType: 'Online',
+            employeeId: this.empId.toString(),
+            punchTime: now.punchDateString,
+            requestType: "A"
+        }
+
         // const response: any = await phin({
         //     url: `https://hronewebapi.hrone.cloud/api/timeoffice/mobile/checkin/Attendance/Request`,
         //     method: 'POST', parse: 'json',
         //     headers: {Authorization: `Bearer ${this.accessToken}`},
-        //     form: {
-        //         ipAddress: process.env.IP_ADDRESS,
-        //         attendanceSource: 'W',
-        //         attendanceType: 'Online',
-        //         employeeId: this.empId.toString(),
-        //         punchTime: now.punchDateString,
-        //         requestType: "A"
-        //     }
+        //     form: form
         // });
         // if (response.statusCode !== 200) {
-        //     await this.sendFailedAlerts(now)
+        //     await this.pushFailedAlert(now)
         //     return false;
         // }
+        console.log(form);
 
         if (this.webhookUrl) {
-            let checkin = now.date.getHours() >= 8 && now.date.getHours() < 17 ? 'in' : 'out';
-            // await sendWebhookAlert(
-            //     this.webhookUrl,
-            //     `[RANDOM] Attendance Check${checkin}`,
-            //     `**${this.empId || this.username}** has checked ${checkin} at ${now.punchDateString}.`,
-            //     checkin === 'in' ? '#00ff00' : '#ff9200'
-            // );
-            await sendWebhookAlert(
-                this.webhookUrl,
-                `Lodu test hai ye manually lgalo`,
+            let checkin = now.date.getHours() >= 8 && now.date.getHours() < 17 ? 'In' : 'Out';
+            await this.pushSkipAlert(
                 `**${this.empId || this.username}** has checked ${checkin} at ${now.punchDateString}.`,
+                `Attendance Check${checkin}`,
                 checkin === 'in' ? '#00ff00' : '#ff9200'
-            );
+            )
         }
         return true;
     }
 
-    async sendFailedAlerts(now: CustomDate, message?: string) {
-        if (this.webhookUrl) {
+    async pushFailedAlert(message?: string) {
+        let url = this.webhookUrl || process.env.ALERT_WEBHOOK;
+        if (url) {
             await sendWebhookAlert(
-                this.webhookUrl,
-                `Punching failed`,
-                `Punching failed for ${this.username} at ${now.punchDateString} Kindly punch manually.` + (message ? `\n\n${message}` : ''),
+                url,
+                `Punching failed [${this.username}]`,
+                `Kindly punch manually` + (message ? `\n\n${message}` : ''),
                 '#ff0000'
+            );
+        }
+    }
+
+    async pushSkipAlert(message: string, title?: string, color?: string) {
+        let url = this.webhookUrl || process.env.ALERT_WEBHOOK
+        if (url) {
+            await sendWebhookAlert(
+                url,
+                (title) ? title : `Punching skipped [${this.username}]`,
+                message,
+                (color) ? color : '#aaa'
             );
         }
     }

@@ -19,6 +19,5 @@ model hrone {
     accessToken String?
     expiresAt DateTime?
     webhookUrl String?
-    skipTill DateTime?
-    punchedState Boolean? @default(false)
+    hasLeaveUntil DateTime?
 }
