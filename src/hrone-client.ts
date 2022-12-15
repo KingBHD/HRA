@@ -153,6 +153,7 @@ export class HROneUser {
             parse: 'json',
             headers: {Authorization: `Bearer ${this.accessToken}`}
         });
+        console.log(response.statusCode, response.body);
         if (response.statusCode === 204) {
             this.timeIn = false;
             this.timeOut = false;
@@ -167,6 +168,7 @@ export class HROneUser {
     }
 
     hasAlreadyMarked(currentHour) {
+        console.log(currentHour, this.timeIn, this.timeOut);
         if (!this.timeIn && currentHour == 8) {
             Log.info(`Needs to punch in`.gray, 'HROUser');
             return false;
