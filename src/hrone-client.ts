@@ -192,16 +192,16 @@ export class HROneUser {
             requestType: "A"
         }
 
-        // const response: any = await phin({
-        //     url: `https://hronewebapi.hrone.cloud/api/timeoffice/mobile/checkin/Attendance/Request`,
-        //     method: 'POST', parse: 'json',
-        //     headers: {Authorization: `Bearer ${this.accessToken}`},
-        //     form: form
-        // });
-        // if (response.statusCode !== 200) {
-        //     await this.pushFailedAlert(now)
-        //     return false;
-        // }
+        const response: any = await phin({
+            url: `https://hronewebapi.hrone.cloud/api/timeoffice/mobile/checkin/Attendance/Request`,
+            method: 'POST', parse: 'json',
+            headers: {Authorization: `Bearer ${this.accessToken}`},
+            form: form
+        });
+        if (response.statusCode !== 200) {
+            await this.pushFailedAlert(now)
+            return false;
+        }
         console.log(form);
 
         if (this.webhookUrl) {
