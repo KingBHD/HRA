@@ -199,7 +199,7 @@ export class HROneUser {
             form: form
         });
         if (response.statusCode !== 200) {
-            await this.pushFailedAlert(now)
+            await this.pushFailedAlert()
             return false;
         }
         console.log(form);
